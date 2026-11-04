@@ -445,6 +445,28 @@
         <footer class="footer">
             <span>Smart Library · Environmental Monitoring</span>
             <span>Powered by ESP32 & Firebase</span>
+
+            
+        <div class="section-heading">
+            <h2>Аналитика микроклимата</h2>
+            <span>История с момента открытия страницы</span>
+        </div>
+
+        <section class="card" style="margin-bottom: 30px;">
+            <div class="card-top">
+                <div class="card-label">Изменение показателей</div>
+                <div class="card-icon">📊</div>
+            </div>
+
+            <div style="height: 280px; margin-top: 20px;">
+                <canvas id="climateChart"></canvas>
+            </div>
+
+            <p class="card-description" id="lastUpdate">
+                Ожидание первых данных...
+            </p>
+</section>
+
         </footer>
 
     </main>
