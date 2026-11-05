@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090e18">
     <title>Smart Library — Dashboard</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,11 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -24,15 +21,11 @@
             min-height: 100vh;
         }
 
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* SIDEBAR */
+        .layout { display: flex; min-height: 100vh; }
 
         .sidebar {
             width: 250px;
+            flex-shrink: 0;
             background: #0d1421;
             border-right: 1px solid #1c293a;
             padding: 30px 20px;
@@ -56,7 +49,6 @@
             place-items: center;
             font-size: 22px;
             font-weight: 800;
-            color: white;
         }
 
         .logo-name {
@@ -65,9 +57,7 @@
             letter-spacing: -0.7px;
         }
 
-        .logo-name span {
-            color: #23c8bd;
-        }
+        .logo-name span { color: #23c8bd; }
 
         .menu-label {
             color: #65748a;
@@ -100,12 +90,11 @@
             padding: 12px;
         }
 
-        /* MAIN */
-
         .main {
             flex: 1;
             padding: 35px 45px;
             max-width: 1500px;
+            min-width: 0;
         }
 
         .topbar {
@@ -135,6 +124,23 @@
             margin-top: 9px;
         }
 
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .language-select {
+            background: #141f30;
+            color: #edf4ff;
+            border: 1px solid #233147;
+            border-radius: 10px;
+            padding: 10px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
         .connection {
             display: flex;
             align-items: center;
@@ -162,12 +168,11 @@
             50% { opacity: 0.4; }
         }
 
-        /* SECTION */
-
         .section-heading {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
@@ -179,9 +184,8 @@
         .section-heading span {
             color: #65748a;
             font-size: 11px;
+            text-align: right;
         }
-
-        /* SENSOR CARDS */
 
         .cards {
             display: grid;
@@ -217,15 +221,11 @@
             background: var(--glow);
             filter: blur(65px);
             opacity: 0.17;
+            pointer-events: none;
         }
 
-        .temperature-card {
-            --glow: #ff9c58;
-        }
-
-        .humidity-card {
-            --glow: #28c8ed;
-        }
+        .temperature-card { --glow: #ff9c58; }
+        .humidity-card { --glow: #28c8ed; }
 
         .card-top {
             display: flex;
@@ -269,8 +269,6 @@
             margin-top: 9px;
         }
 
-        /* STATUS */
-
         .status-panel {
             background: #111c2b;
             border: 1px solid #233147;
@@ -304,8 +302,6 @@
             white-space: nowrap;
         }
 
-        /* FOOTER */
-
         .footer {
             display: flex;
             justify-content: space-between;
@@ -318,19 +314,12 @@
         }
 
         @media (max-width: 850px) {
-            .sidebar {
-                display: none;
-            }
-
-            .main {
-                padding: 25px 20px;
-            }
+            .sidebar { display: none; }
+            .main { padding: 25px 20px; }
         }
 
         @media (max-width: 550px) {
-            .cards {
-                grid-template-columns: 1fr;
-            }
+            .cards { grid-template-columns: 1fr; }
 
             .topbar {
                 align-items: flex-start;
@@ -343,15 +332,17 @@
                 flex-direction: column;
             }
 
-            .value {
-                font-size: 38px;
+            .value { font-size: 38px; }
+
+            .section-heading {
+                align-items: flex-start;
+                flex-direction: column;
             }
         }
     </style>
 </head>
 
 <body>
-
 <div class="layout">
 
     <aside class="sidebar">
@@ -360,14 +351,14 @@
             <div class="logo-name">Smart<span>Library</span></div>
         </div>
 
-        <div class="menu-label">WORKSPACE</div>
-        <div class="menu-item active">▦ &nbsp; Dashboard</div>
-        <div class="menu-item">◷ &nbsp; Analytics</div>
-        <div class="menu-item">⚙ &nbsp; Settings</div>
+        <div class="menu-label" data-i18n="workspace">WORKSPACE</div>
+        <div class="menu-item active">▦ &nbsp; <span data-i18n="dashboard">Dashboard</span></div>
+        <div class="menu-item">◷ &nbsp; <span data-i18n="analyticsMenu">Analytics</span></div>
+        <div class="menu-item">⚙ &nbsp; <span data-i18n="settings">Settings</span></div>
 
         <div class="sidebar-bottom">
             SMART LIBRARY PROJECT<br>
-            Environmental monitoring system<br>
+            <span data-i18n="footer">Environmental monitoring system</span><br>
             © 2026 Smart Library
         </div>
     </aside>
@@ -376,27 +367,35 @@
 
         <header class="topbar">
             <div>
-                <div class="eyebrow">SMART ENVIRONMENT SYSTEM</div>
-                <h1>Dashboard</h1>
-                <p class="subtitle">Управление микроклиматом библиотеки</p>
+                <div class="eyebrow" data-i18n="eyebrow">SMART ENVIRONMENT SYSTEM</div>
+                <h1 data-i18n="dashboard">Dashboard</h1>
+                <p class="subtitle" data-i18n="subtitle">Управление микроклиматом библиотеки</p>
             </div>
 
-            <div class="connection">
-                <span class="connection-dot"></span>
-                Firebase connected
+            <div class="top-actions">
+                <select id="languageSelect" class="language-select" aria-label="Language">
+                    <option value="ro">RO</option>
+                    <option value="ru">RU</option>
+                    <option value="en">EN</option>
+                </select>
+
+                <div class="connection">
+                    <span class="connection-dot"></span>
+                    <span id="connectionText">Connecting...</span>
+                </div>
             </div>
         </header>
 
         <div class="section-heading">
-            <h2>Показатели помещения</h2>
-            <span>Данные с датчика BME280</span>
+            <h2 data-i18n="measurements">Показатели помещения</h2>
+            <span data-i18n="sensorSource">Данные с датчика BME280</span>
         </div>
 
         <section class="cards">
 
             <div class="card temperature-card">
                 <div class="card-top">
-                    <div class="card-label">Температура</div>
+                    <div class="card-label" data-i18n="temperature">Температура</div>
                     <div class="card-icon">🌡️</div>
                 </div>
 
@@ -404,14 +403,14 @@
                     <span id="temperature">--</span><small> °C</small>
                 </div>
 
-                <div class="card-description">
+                <div class="card-description" data-i18n="temperatureDescription">
                     Температура воздуха в помещении
                 </div>
             </div>
 
             <div class="card humidity-card">
                 <div class="card-top">
-                    <div class="card-label">Влажность</div>
+                    <div class="card-label" data-i18n="humidity">Влажность</div>
                     <div class="card-icon">💧</div>
                 </div>
 
@@ -419,7 +418,7 @@
                     <span id="humidity">--</span><small> %</small>
                 </div>
 
-                <div class="card-description">
+                <div class="card-description" data-i18n="humidityDescription">
                     Относительная влажность воздуха
                 </div>
             </div>
@@ -427,52 +426,49 @@
         </section>
 
         <div class="section-heading">
-            <h2>Состояние микроклимата</h2>
-            <span>Контроль помещения</span>
+            <h2 data-i18n="climateHeading">Состояние микроклимата</h2>
+            <span data-i18n="roomControl">Контроль помещения</span>
         </div>
 
         <section class="status-panel">
             <div>
-                <div class="status-title">Мониторинг активен</div>
-                <div class="status-description">
+                <div class="status-title" id="climateStatus">Ожидание данных</div>
+                <div class="status-description" data-i18n="statusDescription">
                     Система получает показатели с датчиков.
                 </div>
             </div>
 
-            <div class="status-badge">● SYSTEM ACTIVE</div>
+            <div class="status-badge" id="systemBadge">● SYSTEM ACTIVE</div>
         </section>
 
-        <footer class="footer">
-            <span>Smart Library · Environmental Monitoring</span>
-            <span>Powered by ESP32 & Firebase</span>
-
-            
         <div class="section-heading">
-            <h2>Аналитика микроклимата</h2>
-            <span>История с момента открытия страницы</span>
+            <h2 data-i18n="analytics">Аналитика микроклимата</h2>
+            <span data-i18n="chartDescription">История с момента открытия страницы</span>
         </div>
 
         <section class="card" style="margin-bottom: 30px;">
             <div class="card-top">
-                <div class="card-label">Изменение показателей</div>
+                <div class="card-label" data-i18n="chartTitle">Изменение показателей</div>
                 <div class="card-icon">📊</div>
             </div>
 
-            <div style="height: 280px; margin-top: 20px;">
+            <div style="height:280px;margin-top:20px;">
                 <canvas id="climateChart"></canvas>
             </div>
 
             <p class="card-description" id="lastUpdate">
                 Ожидание первых данных...
             </p>
-</section>
+        </section>
 
+        <footer class="footer">
+            <span>Smart Library · Environmental Monitoring</span>
+            <span>Powered by ESP32 & Firebase</span>
         </footer>
 
     </main>
 </div>
 
 <script type="module" src="app.js"></script>
-
 </body>
 </html>
