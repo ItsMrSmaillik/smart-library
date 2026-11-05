@@ -6,13 +6,13 @@ importScripts("https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging-comp
 // Скопируй сюда тот же объект firebaseConfig,
 // который уже используется в app.js.
 firebase.initializeApp({
-    apiKey: "ТВОЙ_API_KEY",
+    apiKey: "AIzaSyAEpLDi1MxEnK4OBdS41Z1SjFiLbx0_G9M",
     authDomain: "smart-library-571ba.firebaseapp.com",
     databaseURL: "https://smart-library-571ba-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "smart-library-571ba",
     storageBucket: "smart-library-571ba.firebasestorage.app",
-    messagingSenderId: "ТВОЙ_MESSAGING_SENDER_ID",
-    appId: "ТВОЙ_APP_ID"
+    messagingSenderId: "711061193508",
+    appId: "1:711061193508:web:cd02f03b11124dca3869b1"
 });
 
 const messaging = firebase.messaging();
