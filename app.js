@@ -94,14 +94,10 @@ async function enablePushNotifications() {
 
         // Временное сохранение токена.
         // Позже заменим на защищённое серверное сохранение.
-        await set(ref(database, "pushTokens/" + token), {
-            token,
-            createdAt: Date.now()
-        });
-
+        // Проверяем получение FCM-токена без записи в базу.
         messagingInitialized = true;
 
-        console.log("FCM token received:", token);
+        console.log("FCM token successfully received.");
 
         return true;
 
