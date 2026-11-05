@@ -1,10 +1,10 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 
 import {
     getDatabase,
     ref,
-    onValue
+    onValue,
+    set
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
 import Chart from "https://cdn.jsdelivr.net/npm/chart.js/auto/+esm";
@@ -13,11 +13,11 @@ import Chart from "https://cdn.jsdelivr.net/npm/chart.js/auto/+esm";
 // MICROCLIMATE SETTINGS — CHANGE THESE VALUES
 // =====================================================
 
-const TEMP_MIN = 15;       // Minimum temperature (°C)
-const TEMP_MAX = 30;       // Maximum temperature (°C)
+const TEMP_MIN = 15;
+const TEMP_MAX = 30;
 
-const HUMIDITY_MIN = 40;   // Minimum humidity (%)
-const HUMIDITY_MAX = 60;   // Maximum humidity (%)
+const HUMIDITY_MIN = 40;
+const HUMIDITY_MAX = 60;
 
 // =====================================================
 // FIREBASE CONFIGURATION
@@ -41,6 +41,7 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 const sensorsRef = ref(database, "sensors");
+const notificationSettingsRef = ref(database, "settings/notifications");
 
 // =====================================================
 // HTML ELEMENTS
@@ -52,6 +53,10 @@ const connectionElement = document.getElementById("connectionText");
 const climateStatusElement = document.getElementById("climateStatus");
 const lastUpdateElement = document.getElementById("lastUpdate");
 const languageSelect = document.getElementById("languageSelect");
+
+const mainElement = document.querySelector(".main");
+const footerElement = document.querySelector(".footer");
+const sidebarMenuItems = document.querySelectorAll(".sidebar .menu-item");
 
 // =====================================================
 // CURRENT VALUES
@@ -73,42 +78,32 @@ const translations = {
         dashboard: "Panou principal",
         analyticsMenu: "Analiză",
         settings: "Setări",
-
         eyebrow: "MONITORIZARE INTELIGENTĂ A MICROCLIMATULUI",
         subtitle: "Monitorizarea condițiilor de mediu din bibliotecă în timp real.",
         measurements: "Indicatori actuali",
         sensorSource: "Date transmise de senzorul BME280",
-
         temperature: "Temperatură",
         humidity: "Umiditate",
         temperatureDescription: "Temperatura actuală a încăperii",
         humidityDescription: "Umiditatea relativă a aerului",
-
         climateHeading: "Starea microclimatului",
         roomControl: "Monitorizarea încăperii",
         statusDescription: "Evaluarea valorilor măsurate",
-
         analytics: "Analiza datelor",
         chartDescription: "Evoluția temperaturii și umidității",
         chartTitle: "Istoricul măsurătorilor",
-
         footer: "Sistem de monitorizare a mediului",
-
         waitingData: "Se așteaptă datele",
         noData: "Lipsesc datele",
         connected: "Conectat la Firebase",
         connectionError: "Eroare de conexiune",
-
         normalStatus: "Indicatorii sunt în intervalul stabilit",
         temperatureWarning: "Temperatura este în afara intervalului stabilit",
         humidityWarning: "Umiditatea este în afara intervalului stabilit",
         bothWarning: "Temperatura și umiditatea sunt în afara intervalului stabilit",
-
         lastUpdate: "Ultima actualizare",
-
         temperatureDataset: "Temperatură (°C)",
         humidityDataset: "Umiditate (%)",
-
         notifications: "Notificări",
         noNotifications: "Nu există notificări.",
         markAllRead: "Marchează toate ca citite",
@@ -122,7 +117,18 @@ const translations = {
         humidityLow: "Umiditatea este prea scăzută",
         humidityHigh: "Umiditatea este prea ridicată",
         currentTemperature: "Temperatură",
-        currentHumidity: "Umiditate"
+        currentHumidity: "Umiditate",
+        websiteNotifications: "Notificări pe site",
+        websiteNotificationsDescription: "Salvează alertele în istoricul notificărilor",
+        telegramNotifications: "Notificări Telegram",
+        telegramNotificationsDescription: "Trimite alerte prin Telegram",
+        soundNotifications: "Notificări sonore",
+        soundNotificationsDescription: "Redă un sunet la apariția alertelor",
+        settingsSaved: "Setările au fost sincronizate cu Firebase.",
+        settingsSaving: "Se salvează setările...",
+        settingsError: "Nu s-au putut salva setările.",
+        settingsLoading: "Se încarcă setările...",
+        settingsUnavailable: "Setările nu sunt disponibile."
     },
 
     ru: {
@@ -130,42 +136,32 @@ const translations = {
         dashboard: "Главная панель",
         analyticsMenu: "Аналитика",
         settings: "Настройки",
-
         eyebrow: "УМНЫЙ МОНИТОРИНГ МИКРОКЛИМАТА",
         subtitle: "Мониторинг условий окружающей среды в библиотеке в реальном времени.",
         measurements: "Текущие показатели",
         sensorSource: "Данные, полученные от датчика BME280",
-
         temperature: "Температура",
         humidity: "Влажность",
         temperatureDescription: "Текущая температура помещения",
         humidityDescription: "Относительная влажность воздуха",
-
         climateHeading: "Состояние микроклимата",
         roomControl: "Мониторинг помещения",
         statusDescription: "Оценка измеренных показателей",
-
         analytics: "Аналитика данных",
         chartDescription: "Изменение температуры и влажности",
         chartTitle: "История измерений",
-
         footer: "Система мониторинга окружающей среды",
-
         waitingData: "Ожидание данных",
         noData: "Нет данных",
         connected: "Подключено к Firebase",
         connectionError: "Ошибка подключения",
-
         normalStatus: "Показатели находятся в заданном диапазоне",
         temperatureWarning: "Температура выходит за заданный диапазон",
         humidityWarning: "Влажность выходит за заданный диапазон",
         bothWarning: "Температура и влажность выходят за заданный диапазон",
-
         lastUpdate: "Последнее обновление",
-
         temperatureDataset: "Температура (°C)",
         humidityDataset: "Влажность (%)",
-
         notifications: "Уведомления",
         noNotifications: "Уведомлений пока нет.",
         markAllRead: "Отметить все прочитанными",
@@ -179,7 +175,18 @@ const translations = {
         humidityLow: "Слишком низкая влажность",
         humidityHigh: "Слишком высокая влажность",
         currentTemperature: "Температура",
-        currentHumidity: "Влажность"
+        currentHumidity: "Влажность",
+        websiteNotifications: "Уведомления на сайте",
+        websiteNotificationsDescription: "Сохранять предупреждения в истории уведомлений",
+        telegramNotifications: "Уведомления Telegram",
+        telegramNotificationsDescription: "Отправлять предупреждения через Telegram",
+        soundNotifications: "Звуковые уведомления",
+        soundNotificationsDescription: "Воспроизводить звук при появлении предупреждений",
+        settingsSaved: "Настройки синхронизированы с Firebase.",
+        settingsSaving: "Сохранение настроек...",
+        settingsError: "Не удалось сохранить настройки.",
+        settingsLoading: "Загрузка настроек...",
+        settingsUnavailable: "Настройки недоступны."
     },
 
     en: {
@@ -187,42 +194,32 @@ const translations = {
         dashboard: "Dashboard",
         analyticsMenu: "Analytics",
         settings: "Settings",
-
         eyebrow: "SMART MICROCLIMATE MONITORING",
         subtitle: "Real-time monitoring of environmental conditions in the library.",
         measurements: "Current measurements",
         sensorSource: "Data provided by the BME280 sensor",
-
         temperature: "Temperature",
         humidity: "Humidity",
         temperatureDescription: "Current room temperature",
         humidityDescription: "Relative air humidity",
-
         climateHeading: "Microclimate status",
         roomControl: "Room monitoring",
         statusDescription: "Evaluation of measured values",
-
         analytics: "Data analytics",
         chartDescription: "Temperature and humidity trends",
         chartTitle: "Measurement history",
-
         footer: "Environmental monitoring system",
-
         waitingData: "Waiting for data",
         noData: "No data",
         connected: "Connected to Firebase",
         connectionError: "Connection error",
-
         normalStatus: "Measurements are within the configured range",
         temperatureWarning: "Temperature is outside the configured range",
         humidityWarning: "Humidity is outside the configured range",
         bothWarning: "Temperature and humidity are outside the configured range",
-
         lastUpdate: "Last update",
-
         temperatureDataset: "Temperature (°C)",
         humidityDataset: "Humidity (%)",
-
         notifications: "Notifications",
         noNotifications: "No notifications yet.",
         markAllRead: "Mark all as read",
@@ -236,7 +233,18 @@ const translations = {
         humidityLow: "Humidity is too low",
         humidityHigh: "Humidity is too high",
         currentTemperature: "Temperature",
-        currentHumidity: "Humidity"
+        currentHumidity: "Humidity",
+        websiteNotifications: "Website notifications",
+        websiteNotificationsDescription: "Save alerts in the notification history",
+        telegramNotifications: "Telegram notifications",
+        telegramNotificationsDescription: "Send alerts through Telegram",
+        soundNotifications: "Sound notifications",
+        soundNotificationsDescription: "Play a sound when alerts appear",
+        settingsSaved: "Settings synchronized with Firebase.",
+        settingsSaving: "Saving settings...",
+        settingsError: "Could not save settings.",
+        settingsLoading: "Loading settings...",
+        settingsUnavailable: "Settings are unavailable."
     }
 };
 
@@ -245,7 +253,6 @@ const translations = {
 // =====================================================
 
 const supportedLanguages = ["ro", "ru", "en"];
-
 let currentLanguage = "ro";
 
 try {
@@ -258,140 +265,79 @@ try {
     console.warn("Could not read saved language:", error);
 }
 
-// =====================================================
-// TRANSLATION FUNCTION
-// =====================================================
-
 function translate(key) {
-    return translations[currentLanguage][key] || key;
-}
-
-function applyLanguage(language) {
-    if (!supportedLanguages.includes(language)) {
-        language = "ro";
-    }
-
-    currentLanguage = language;
-
-    try {
-        localStorage.setItem("smartLibraryLanguage", language);
-    } catch (error) {
-        console.warn("Could not save language:", error);
-    }
-
-    document.documentElement.lang = language;
-
-    if (languageSelect) {
-        languageSelect.value = language;
-    }
-
-    document.querySelectorAll("[data-i18n]").forEach(element => {
-        const key = element.dataset.i18n;
-
-        if (translations[language][key]) {
-            element.textContent = translations[language][key];
-        }
-    });
-
-    if (chart) {
-        chart.data.datasets[0].label = translate("temperatureDataset");
-        chart.data.datasets[1].label = translate("humidityDataset");
-        chart.update();
-    }
-
-    updateConnectionText();
-    updateClimateStatus();
-    updateLastUpdate();
-    renderNotifications();
-}
-
-// =====================================================
-// LANGUAGE SELECTOR
-// =====================================================
-
-if (languageSelect) {
-    languageSelect.addEventListener("change", event => {
-        applyLanguage(event.target.value);
-    });
+    return translations[currentLanguage]?.[key] || key;
 }
 
 // =====================================================
 // CHART
 // =====================================================
 
-const chart = new Chart(
-    document.getElementById("climateChart"),
-    {
-        type: "line",
+const chartCanvas = document.getElementById("climateChart");
 
-        data: {
-            labels: [],
-
-            datasets: [
-                {
-                    label: translations[currentLanguage].temperatureDataset,
-                    data: [],
-                    borderColor: "#ff9c58",
-                    backgroundColor: "rgba(255, 156, 88, 0.12)",
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 2
-                },
-                {
-                    label: translations[currentLanguage].humidityDataset,
-                    data: [],
-                    borderColor: "#28c8ed",
-                    backgroundColor: "rgba(40, 200, 237, 0.10)",
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 2
-                }
-            ]
+const chart = chartCanvas ? new Chart(chartCanvas, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: translations[currentLanguage].temperatureDataset,
+                data: [],
+                borderColor: "#ff9c58",
+                backgroundColor: "rgba(255, 156, 88, 0.12)",
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2
+            },
+            {
+                label: translations[currentLanguage].humidityDataset,
+                data: [],
+                borderColor: "#28c8ed",
+                backgroundColor: "rgba(40, 200, 237, 0.10)",
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            intersect: false,
+            mode: "index"
         },
-
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-
-            interaction: {
-                intersect: false,
-                mode: "index"
-            },
-
-            plugins: {
-                legend: {
-                    labels: {
-                        color: "#aab8cc",
-                        usePointStyle: true
-                    }
+        plugins: {
+            legend: {
+                labels: {
+                    color: "#aab8cc",
+                    usePointStyle: true
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    color: "#718198",
+                    maxTicksLimit: 6
+                },
+                grid: {
+                    color: "rgba(255,255,255,0.04)"
                 }
             },
-
-            scales: {
-                x: {
-                    ticks: {
-                        color: "#718198",
-                        maxTicksLimit: 6
-                    },
-                    grid: {
-                        color: "rgba(255,255,255,0.04)"
-                    }
+            y: {
+                ticks: {
+                    color: "#718198"
                 },
-
-                y: {
-                    ticks: {
-                        color: "#718198"
-                    },
-                    grid: {
-                        color: "rgba(255,255,255,0.06)"
-                    }
+                grid: {
+                    color: "rgba(255,255,255,0.06)"
                 }
             }
         }
     }
-);
+}) : null;
 
 // =====================================================
 // CONNECTION STATUS
@@ -457,17 +403,416 @@ function updateClimateStatus() {
 }
 
 // =====================================================
+// NOTIFICATION SETTINGS
+// =====================================================
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+    website: true,
+    telegram: true,
+    sound: false
+};
+
+let notificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS };
+let settingsLoaded = false;
+let settingsWriteInProgress = false;
+
+function setSettingsStatus(message) {
+    const element = document.getElementById("settingsSaveStatus");
+    if (element) element.textContent = message;
+}
+
+function updateSettingsControls() {
+    const website = document.getElementById("websiteNotificationsToggle");
+    const telegram = document.getElementById("telegramNotificationsToggle");
+    const sound = document.getElementById("soundNotificationsToggle");
+
+    if (website) website.checked = notificationSettings.website;
+    if (telegram) telegram.checked = notificationSettings.telegram;
+    if (sound) sound.checked = notificationSettings.sound;
+}
+
+onValue(
+    notificationSettingsRef,
+    async snapshot => {
+        const data = snapshot.val() || {};
+
+        notificationSettings = {
+            website: typeof data.website === "boolean"
+                ? data.website
+                : DEFAULT_NOTIFICATION_SETTINGS.website,
+            telegram: typeof data.telegram === "boolean"
+                ? data.telegram
+                : DEFAULT_NOTIFICATION_SETTINGS.telegram,
+            sound: typeof data.sound === "boolean"
+                ? data.sound
+                : DEFAULT_NOTIFICATION_SETTINGS.sound
+        };
+
+        settingsLoaded = true;
+        updateSettingsControls();
+        setSettingsStatus(translate("settingsSaved"));
+
+        // Add only missing values. Existing user settings are not overwritten.
+        if (!snapshot.exists() && !settingsWriteInProgress) {
+            settingsWriteInProgress = true;
+
+            try {
+                await set(notificationSettingsRef, DEFAULT_NOTIFICATION_SETTINGS);
+            } catch (error) {
+                console.error("Could not create default notification settings:", error);
+                setSettingsStatus(translate("settingsError"));
+            } finally {
+                settingsWriteInProgress = false;
+            }
+        } else if (snapshot.exists()) {
+            const missing = {};
+
+            for (const key of Object.keys(DEFAULT_NOTIFICATION_SETTINGS)) {
+                if (typeof data[key] !== "boolean") {
+                    missing[key] = DEFAULT_NOTIFICATION_SETTINGS[key];
+                }
+            }
+
+            if (Object.keys(missing).length > 0 && !settingsWriteInProgress) {
+                settingsWriteInProgress = true;
+
+                try {
+                    for (const [key, value] of Object.entries(missing)) {
+                        await set(ref(database, `settings/notifications/${key}`), value);
+                    }
+                } catch (error) {
+                    console.error("Could not fill missing settings:", error);
+                    setSettingsStatus(translate("settingsError"));
+                } finally {
+                    settingsWriteInProgress = false;
+                }
+            }
+        }
+    },
+    error => {
+        console.error("Notification settings Firebase error:", error);
+        setSettingsStatus(translate("settingsUnavailable"));
+    }
+);
+
+async function saveNotificationSetting(key, value) {
+    if (!settingsLoaded) {
+        updateSettingsControls();
+        return;
+    }
+
+    const previousValue = notificationSettings[key];
+    notificationSettings[key] = value;
+    updateSettingsControls();
+    setSettingsStatus(translate("settingsSaving"));
+
+    try {
+        await set(ref(database, `settings/notifications/${key}`), value);
+        setSettingsStatus(translate("settingsSaved"));
+    } catch (error) {
+        console.error("Could not save notification setting:", error);
+        notificationSettings[key] = previousValue;
+        updateSettingsControls();
+        setSettingsStatus(translate("settingsError"));
+    }
+}
+
+function connectSettingsControls() {
+    const website = document.getElementById("websiteNotificationsToggle");
+    const telegram = document.getElementById("telegramNotificationsToggle");
+    const sound = document.getElementById("soundNotificationsToggle");
+
+    website?.addEventListener("change", event => {
+        saveNotificationSetting("website", event.target.checked);
+    });
+
+    telegram?.addEventListener("change", event => {
+        saveNotificationSetting("telegram", event.target.checked);
+    });
+
+    sound?.addEventListener("change", event => {
+        saveNotificationSetting("sound", event.target.checked);
+    });
+
+    updateSettingsControls();
+}
+
+function ensureSettingsPage() {
+    if (!mainElement || document.getElementById("settingsPage")) return;
+
+    const page = document.createElement("section");
+    page.id = "settingsPage";
+    page.style.display = "none";
+    page.innerHTML = `
+        <div class="section-heading">
+            <h2 data-i18n="settings">Настройки</h2>
+            <span>SMART LIBRARY CONFIGURATION</span>
+        </div>
+
+        <div class="sl-settings-card">
+            <div class="sl-settings-row">
+                <div>
+                    <h3 data-i18n="websiteNotifications"></h3>
+                    <p data-i18n="websiteNotificationsDescription"></p>
+                </div>
+                <label class="sl-switch">
+                    <input type="checkbox" id="websiteNotificationsToggle" checked>
+                    <span class="sl-switch-slider"></span>
+                </label>
+            </div>
+
+            <div class="sl-settings-divider"></div>
+
+            <div class="sl-settings-row">
+                <div>
+                    <h3 data-i18n="telegramNotifications"></h3>
+                    <p data-i18n="telegramNotificationsDescription"></p>
+                </div>
+                <label class="sl-switch">
+                    <input type="checkbox" id="telegramNotificationsToggle" checked>
+                    <span class="sl-switch-slider"></span>
+                </label>
+            </div>
+
+            <div class="sl-settings-divider"></div>
+
+            <div class="sl-settings-row">
+                <div>
+                    <h3 data-i18n="soundNotifications"></h3>
+                    <p data-i18n="soundNotificationsDescription"></p>
+                </div>
+                <label class="sl-switch">
+                    <input type="checkbox" id="soundNotificationsToggle">
+                    <span class="sl-switch-slider"></span>
+                </label>
+            </div>
+
+            <div id="settingsSaveStatus" class="sl-settings-save-status"></div>
+        </div>
+    `;
+
+    const style = document.createElement("style");
+    style.textContent = `
+        .sl-settings-card {
+            background: linear-gradient(145deg, #141f30, #101927);
+            border: 1px solid #233147;
+            border-radius: 19px;
+            padding: 10px 25px;
+            margin-bottom: 30px;
+        }
+
+        .sl-settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 23px 0;
+        }
+
+        .sl-settings-row h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sl-settings-row p {
+            color: #78879d;
+            font-size: 12px;
+            margin-top: 7px;
+            line-height: 1.5;
+        }
+
+        .sl-settings-divider {
+            height: 1px;
+            background: #233147;
+        }
+
+        .sl-settings-save-status {
+            padding: 12px 0;
+            color: #78879d;
+            font-size: 11px;
+        }
+
+        .sl-switch {
+            position: relative;
+            width: 48px;
+            height: 27px;
+            flex-shrink: 0;
+        }
+
+        .sl-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .sl-switch-slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background: #344256;
+            border-radius: 30px;
+            transition: .25s;
+        }
+
+        .sl-switch-slider::before {
+            content: "";
+            position: absolute;
+            width: 19px;
+            height: 19px;
+            left: 4px;
+            top: 4px;
+            background: white;
+            border-radius: 50%;
+            transition: .25s;
+        }
+
+        .sl-switch input:checked + .sl-switch-slider {
+            background: #20bfae;
+        }
+
+        .sl-switch input:checked + .sl-switch-slider::before {
+            transform: translateX(21px);
+        }
+    `;
+    document.head.appendChild(style);
+
+    if (footerElement) {
+        mainElement.insertBefore(page, footerElement);
+    } else {
+        mainElement.appendChild(page);
+    }
+
+    connectSettingsControls();
+}
+
+// =====================================================
+// NAVIGATION
+// =====================================================
+
+let currentPage = "dashboard";
+
+function setActiveMenu(index) {
+    sidebarMenuItems.forEach((item, itemIndex) => {
+        item.classList.toggle("active", itemIndex === index);
+    });
+}
+
+function getDashboardElements() {
+    if (!mainElement) return [];
+
+    return Array.from(mainElement.children).filter(element => {
+        return element.tagName !== "HEADER" &&
+            element !== footerElement &&
+            element.id !== "settingsPage";
+    });
+}
+
+function showPage(page) {
+    currentPage = page;
+
+    const settingsPage = document.getElementById("settingsPage");
+    const dashboardElements = getDashboardElements();
+
+    if (page === "settings") {
+        dashboardElements.forEach(element => {
+            element.style.display = "none";
+        });
+
+        if (settingsPage) settingsPage.style.display = "block";
+        setActiveMenu(2);
+        return;
+    }
+
+    if (settingsPage) settingsPage.style.display = "none";
+
+    dashboardElements.forEach(element => {
+        element.style.display = "";
+    });
+
+    if (page === "analytics") {
+        setActiveMenu(1);
+
+        const chartSection = document.getElementById("climateChart")?.closest("section");
+        chartSection?.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+        setActiveMenu(0);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+}
+
+if (sidebarMenuItems.length >= 3) {
+    sidebarMenuItems[0].style.cursor = "pointer";
+    sidebarMenuItems[1].style.cursor = "pointer";
+    sidebarMenuItems[2].style.cursor = "pointer";
+
+    sidebarMenuItems[0].addEventListener("click", () => showPage("dashboard"));
+    sidebarMenuItems[1].addEventListener("click", () => showPage("analytics"));
+    sidebarMenuItems[2].addEventListener("click", () => showPage("settings"));
+}
+
+ensureSettingsPage();
+
+// =====================================================
+// LANGUAGE APPLICATION
+// =====================================================
+
+function applyLanguage(language) {
+    if (!supportedLanguages.includes(language)) {
+        language = "ro";
+    }
+
+    currentLanguage = language;
+
+    try {
+        localStorage.setItem("smartLibraryLanguage", language);
+    } catch (error) {
+        console.warn("Could not save language:", error);
+    }
+
+    document.documentElement.lang = language;
+
+    if (languageSelect) {
+        languageSelect.value = language;
+    }
+
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+        const key = element.dataset.i18n;
+
+        if (translations[language][key]) {
+            element.textContent = translations[language][key];
+        }
+    });
+
+    if (chart) {
+        chart.data.datasets[0].label = translate("temperatureDataset");
+        chart.data.datasets[1].label = translate("humidityDataset");
+        chart.update();
+    }
+
+    updateConnectionText();
+    updateClimateStatus();
+    updateLastUpdate();
+    renderNotifications();
+    setSettingsStatus(settingsLoaded
+        ? translate("settingsSaved")
+        : translate("settingsLoading"));
+}
+
+if (languageSelect) {
+    languageSelect.addEventListener("change", event => {
+        applyLanguage(event.target.value);
+    });
+}
+
+// =====================================================
 // NOTIFICATION STORAGE
 // =====================================================
 
 const NOTIFICATIONS_STORAGE_KEY = "smartLibraryNotifications";
-
 let notifications = [];
 
 try {
-    const savedNotifications = localStorage.getItem(
-        NOTIFICATIONS_STORAGE_KEY
-    );
+    const savedNotifications = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
 
     if (savedNotifications) {
         const parsed = JSON.parse(savedNotifications);
@@ -488,6 +833,50 @@ function saveNotifications() {
         );
     } catch (error) {
         console.warn("Could not save notifications:", error);
+    }
+}
+
+// =====================================================
+// NOTIFICATION SOUND
+// =====================================================
+
+let notificationAudioContext = null;
+
+function playNotificationSound() {
+    if (!notificationSettings.sound) return;
+
+    try {
+        const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioContextClass) return;
+
+        if (!notificationAudioContext) {
+            notificationAudioContext = new AudioContextClass();
+        }
+
+        if (notificationAudioContext.state === "suspended") {
+            notificationAudioContext.resume().catch(() => {});
+        }
+
+        const context = notificationAudioContext;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(880, context.currentTime);
+
+        gain.gain.setValueAtTime(0.0001, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.10, context.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.25);
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.26);
+    } catch (error) {
+        console.warn("Notification sound unavailable:", error);
     }
 }
 
@@ -667,13 +1056,12 @@ notificationWidget.className = "sl-notification-widget";
 const notificationButton = document.createElement("button");
 notificationButton.className = "sl-notification-button";
 notificationButton.type = "button";
-notificationButton.textContent = "♧";
+notificationButton.textContent = "🔔";
 notificationButton.setAttribute("aria-label", "Notifications");
 
 const notificationBadge = document.createElement("span");
 notificationBadge.className = "sl-notification-badge";
 notificationBadge.style.display = "none";
-
 notificationButton.appendChild(notificationBadge);
 
 const notificationPanel = document.createElement("div");
@@ -700,14 +1088,12 @@ const notificationList = document.createElement("div");
 notificationList.className = "sl-notification-list";
 
 notificationHeader.appendChild(notificationTitle);
-
 notificationPanel.appendChild(notificationHeader);
 notificationPanel.appendChild(notificationActions);
 notificationPanel.appendChild(notificationList);
 
 notificationWidget.appendChild(notificationButton);
 notificationWidget.appendChild(notificationPanel);
-
 document.body.appendChild(notificationWidget);
 
 // =====================================================
@@ -722,23 +1108,20 @@ function getNotificationText(notification) {
         };
     }
 
-    const messages = (notification.alerts || []).map(key => {
-        return translate(key);
-    });
-
+    const messages = (notification.alerts || []).map(key => translate(key));
     const details = [];
 
     if (notification.temperature !== null &&
         notification.temperature !== undefined) {
         details.push(
-            `${translate("currentTemperature")}: ${notification.temperature.toFixed(1)} °C`
+            `${translate("currentTemperature")}: ${Number(notification.temperature).toFixed(1)} °C`
         );
     }
 
     if (notification.humidity !== null &&
         notification.humidity !== undefined) {
         details.push(
-            `${translate("currentHumidity")}: ${notification.humidity.toFixed(1)} %`
+            `${translate("currentHumidity")}: ${Number(notification.humidity).toFixed(1)} %`
         );
     }
 
@@ -777,16 +1160,10 @@ function renderNotifications() {
 
     notifications.forEach(notification => {
         const item = document.createElement("div");
-
         item.className = "sl-notification-item";
 
-        if (notification.read) {
-            item.classList.add("read");
-        }
-
-        if (notification.type === "recovery") {
-            item.classList.add("recovery");
-        }
+        if (notification.read) item.classList.add("read");
+        if (notification.type === "recovery") item.classList.add("recovery");
 
         const text = getNotificationText(notification);
 
@@ -797,7 +1174,6 @@ function renderNotifications() {
         body.textContent = text.body;
 
         const time = document.createElement("time");
-
         const date = new Date(notification.timestamp);
 
         time.textContent = date.toLocaleString(
@@ -834,6 +1210,12 @@ function renderNotifications() {
 // =====================================================
 
 function addNotification(type, alerts = []) {
+    // Sound is independent of website notification history.
+    playNotificationSound();
+
+    // If website notifications are disabled, do not add new entries.
+    if (!notificationSettings.website) return;
+
     const notification = {
         type,
         alerts,
@@ -844,9 +1226,6 @@ function addNotification(type, alerts = []) {
     };
 
     notifications.unshift(notification);
-
-    // Keep the last 50 notifications
-
     notifications = notifications.slice(0, 50);
 
     saveNotifications();
@@ -878,7 +1257,6 @@ markReadButton.addEventListener("click", () => {
 
 clearNotificationsButton.addEventListener("click", () => {
     notifications = [];
-
     saveNotifications();
     renderNotifications();
 });
@@ -890,14 +1268,10 @@ clearNotificationsButton.addEventListener("click", () => {
 let previousAlertState = null;
 
 function checkClimateAlerts() {
-    if (temperature === null || humidity === null) {
-        return;
-    }
+    if (temperature === null || humidity === null) return;
 
     const activeAlerts = getActiveAlerts();
     const currentState = activeAlerts.join("|");
-
-    // First valid sensor reading
 
     if (previousAlertState === null) {
         previousAlertState = currentState;
@@ -909,21 +1283,11 @@ function checkClimateAlerts() {
         return;
     }
 
-    // Nothing changed — do not create duplicate notifications
-
-    if (currentState === previousAlertState) {
-        return;
-    }
-
-    // Values have returned to normal
+    if (currentState === previousAlertState) return;
 
     if (currentState === "" && previousAlertState !== "") {
         addNotification("recovery");
-    }
-
-    // New warning or a changed warning
-
-    else if (currentState !== "") {
+    } else if (currentState !== "") {
         addNotification("alert", activeAlerts);
     }
 
@@ -963,10 +1327,9 @@ function updateLastUpdate() {
 // =====================================================
 
 function addChartPoint() {
-    if (temperature === null || humidity === null) return;
+    if (!chart || temperature === null || humidity === null) return;
 
     const key = `${temperature}|${humidity}`;
-
     if (key === lastChartKey) return;
 
     lastChartKey = key;
@@ -987,26 +1350,20 @@ function addChartPoint() {
     chart.data.datasets[0].data.push(temperature);
     chart.data.datasets[1].data.push(humidity);
 
-    // Keep the last 30 measurements
-
     if (chart.data.labels.length > 30) {
         chart.data.labels.shift();
-
-        chart.data.datasets.forEach(dataset => {
-            dataset.data.shift();
-        });
+        chart.data.datasets.forEach(dataset => dataset.data.shift());
     }
 
     chart.update();
 }
 
 // =====================================================
-// FIREBASE DATA
+// FIREBASE SENSOR DATA
 // =====================================================
 
 onValue(
     sensorsRef,
-
     snapshot => {
         const data = snapshot.val();
 
@@ -1026,48 +1383,42 @@ onValue(
                 : null;
         }
 
-        temperatureElement.textContent =
-            temperature === null
-                ? translate("noData")
-                : temperature.toFixed(1);
+        if (temperatureElement) {
+            temperatureElement.textContent =
+                temperature === null
+                    ? translate("noData")
+                    : temperature.toFixed(1);
+        }
 
-        humidityElement.textContent =
-            humidity === null
-                ? translate("noData")
-                : humidity.toFixed(1);
+        if (humidityElement) {
+            humidityElement.textContent =
+                humidity === null
+                    ? translate("noData")
+                    : humidity.toFixed(1);
+        }
 
         connectionKey = "connected";
-
         updateConnectionText();
         updateClimateStatus();
-
-        // Check whether a notification is needed
-
         checkClimateAlerts();
 
         lastUpdateTime = new Date();
         updateLastUpdate();
 
-        // Combine closely spaced Firebase updates into one chart point
-
         clearTimeout(chartSampleTimer);
-
-        chartSampleTimer = setTimeout(() => {
-            addChartPoint();
-        }, 300);
+        chartSampleTimer = setTimeout(addChartPoint, 300);
     },
-
     error => {
-        console.error("Firebase error:", error);
-
+        console.error("Firebase sensor error:", error);
         connectionKey = "connectionError";
         updateConnectionText();
     }
 );
 
 // =====================================================
-// INITIAL LANGUAGE AND NOTIFICATIONS
+// INITIALIZATION
 // =====================================================
 
 applyLanguage(currentLanguage);
 renderNotifications();
+setSettingsStatus(translate("settingsLoading"));
