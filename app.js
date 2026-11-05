@@ -14,7 +14,7 @@ import Chart from "https://cdn.jsdelivr.net/npm/chart.js/auto/+esm";
 // =====================================================
 
 const TEMP_MIN = 15;       // Minimum temperature (°C)
-const TEMP_MAX = 20;       // Maximum temperature (°C)
+const TEMP_MAX = 30;       // Maximum temperature (°C)
 
 const HUMIDITY_MIN = 40;   // Minimum humidity (%)
 const HUMIDITY_MAX = 60;   // Maximum humidity (%)
