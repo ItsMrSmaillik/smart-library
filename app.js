@@ -92,13 +92,15 @@ async function enablePushNotifications() {
             throw new Error("Не удалось получить Push-токен.");
         }
 
-        // Временное сохранение токена.
-        // Позже заменим на защищённое серверное сохранение.
-        // Проверяем получение FCM-токена без записи в базу.
+        // Сохраняем FCM-токен в Firebase
+        await set(ref(database, `pushTokens/${token}`), {
+            token: token,
+            createdAt: Date.now()
+            });
+
         messagingInitialized = true;
 
-        console.log("FCM token successfully received.");
-
+        console.log("FCM token successfully received and saved.");
         return true;
 
     } catch (error) {
