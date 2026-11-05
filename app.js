@@ -1,3 +1,4 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 
 import {
@@ -8,6 +9,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
 import Chart from "https://cdn.jsdelivr.net/npm/chart.js/auto/+esm";
+
+import {
+    getMessaging,
+    getToken,
+    onMessage
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
 
 // =====================================================
 // MICROCLIMATE SETTINGS — CHANGE THESE VALUES
@@ -42,6 +49,82 @@ const database = getDatabase(app);
 
 const sensorsRef = ref(database, "sensors");
 const notificationSettingsRef = ref(database, "settings/notifications");
+
+const messaging = getMessaging(app);
+
+const VAPID_PUBLIC_KEY =
+    "BI3sa9hC8zX4xPXb3vqFb97X194wUBBiiCMLOYyX4U0nI_UDE9rWEK_NqQWfVQhKnSZuH8ES-y2Ad1eiGiuXILg";
+
+let messagingInitialized = false;
+
+// =====================================================
+// PUSH NOTIFICATIONS
+// =====================================================
+
+async function enablePushNotifications() {
+    try {
+        if (!("Notification" in window)) {
+            throw new Error("Ваш браузер не поддерживает уведомления.");
+        }
+
+        if (!("serviceWorker" in navigator)) {
+            throw new Error("Service Worker не поддерживается браузером.");
+        }
+
+        const permission = await Notification.requestPermission();
+
+        if (permission !== "granted") {
+            throw new Error("Разрешение на уведомления не предоставлено.");
+        }
+
+        const registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js"
+        );
+
+        await navigator.serviceWorker.ready;
+
+        const token = await getToken(messaging, {
+            vapidKey: VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if (!token) {
+            throw new Error("Не удалось получить Push-токен.");
+        }
+
+        // Временное сохранение токена.
+        // Позже заменим на защищённое серверное сохранение.
+        await set(ref(database, "pushTokens/" + token), {
+            token,
+            createdAt: Date.now()
+        });
+
+        messagingInitialized = true;
+
+        console.log("FCM token received:", token);
+
+        return true;
+
+    } catch (error) {
+        console.error("Push error:", error);
+        throw error;
+    }
+}
+
+// Foreground messages: сайт открыт.
+onMessage(messaging, (payload) => {
+    console.log("Foreground Push received:", payload);
+
+    const title = payload.notification?.title || "Smart Library";
+    const body = payload.notification?.body || "Получено новое уведомление";
+
+    if (Notification.permission === "granted") {
+        new Notification(title, {
+            body,
+            icon: "/favicon.ico"
+        });
+    }
+});
 
 // =====================================================
 // HTML ELEMENTS
@@ -124,6 +207,14 @@ const translations = {
         telegramNotificationsDescription: "Trimite alerte prin Telegram",
         soundNotifications: "Notificări sonore",
         soundNotificationsDescription: "Redă un sunet la apariția alertelor",
+        pushNotifications: "Notificări Push",
+        pushNotificationsDescription: "Primește notificări în browser și Windows",
+        pushEnable: "Activează",
+        pushConnecting: "Se conectează...",
+        pushConnected: "Conectat",
+        pushPermissionDenied: "Permisiunea pentru notificări nu a fost acordată.",
+        pushSuccess: "Notificările Push au fost activate.",
+        pushError: "Nu s-a putut activa Push.",
         settingsSaved: "Setările au fost sincronizate cu Firebase.",
         settingsSaving: "Se salvează setările...",
         settingsError: "Nu s-au putut salva setările.",
@@ -182,6 +273,14 @@ const translations = {
         telegramNotificationsDescription: "Отправлять предупреждения через Telegram",
         soundNotifications: "Звуковые уведомления",
         soundNotificationsDescription: "Воспроизводить звук при появлении предупреждений",
+        pushNotifications: "Push-уведомления",
+        pushNotificationsDescription: "Получать уведомления в браузере и Windows",
+        pushEnable: "Включить",
+        pushConnecting: "Подключение...",
+        pushConnected: "Подключено",
+        pushPermissionDenied: "Разрешение на уведомления не предоставлено.",
+        pushSuccess: "Push-уведомления активированы.",
+        pushError: "Не удалось активировать Push.",
         settingsSaved: "Настройки синхронизированы с Firebase.",
         settingsSaving: "Сохранение настроек...",
         settingsError: "Не удалось сохранить настройки.",
@@ -240,6 +339,14 @@ const translations = {
         telegramNotificationsDescription: "Send alerts through Telegram",
         soundNotifications: "Sound notifications",
         soundNotificationsDescription: "Play a sound when alerts appear",
+        pushNotifications: "Push notifications",
+        pushNotificationsDescription: "Receive notifications in your browser and Windows",
+        pushEnable: "Enable",
+        pushConnecting: "Connecting...",
+        pushConnected: "Connected",
+        pushPermissionDenied: "Notification permission was not granted.",
+        pushSuccess: "Push notifications have been enabled.",
+        pushError: "Could not enable Push.",
         settingsSaved: "Settings synchronized with Firebase.",
         settingsSaving: "Saving settings...",
         settingsError: "Could not save settings.",
@@ -452,7 +559,6 @@ onValue(
         updateSettingsControls();
         setSettingsStatus(translate("settingsSaved"));
 
-        // Add only missing values. Existing user settings are not overwritten.
         if (!snapshot.exists() && !settingsWriteInProgress) {
             settingsWriteInProgress = true;
 
@@ -517,6 +623,10 @@ async function saveNotificationSetting(key, value) {
     }
 }
 
+// =====================================================
+// SETTINGS PAGE
+// =====================================================
+
 function connectSettingsControls() {
     const website = document.getElementById("websiteNotificationsToggle");
     const telegram = document.getElementById("telegramNotificationsToggle");
@@ -534,6 +644,37 @@ function connectSettingsControls() {
         saveNotificationSetting("sound", event.target.checked);
     });
 
+    const pushButton = document.getElementById("enablePushButton");
+    const pushStatus = document.getElementById("pushStatus");
+
+    pushButton?.addEventListener("click", async () => {
+        pushButton.disabled = true;
+        pushButton.textContent = translate("pushConnecting");
+
+        if (pushStatus) {
+            pushStatus.textContent = translate("pushConnecting");
+        }
+
+        try {
+            await enablePushNotifications();
+
+            pushButton.textContent = translate("pushConnected");
+
+            if (pushStatus) {
+                pushStatus.textContent = translate("pushSuccess");
+            }
+        } catch (error) {
+            pushButton.textContent = translate("pushEnable");
+
+            if (pushStatus) {
+                pushStatus.textContent =
+                    `${translate("pushError")} ${error.message}`;
+            }
+        } finally {
+            pushButton.disabled = false;
+        }
+    });
+
     updateSettingsControls();
 }
 
@@ -543,6 +684,7 @@ function ensureSettingsPage() {
     const page = document.createElement("section");
     page.id = "settingsPage";
     page.style.display = "none";
+
     page.innerHTML = `
         <div class="section-heading">
             <h2 data-i18n="settings">Настройки</h2>
@@ -550,11 +692,13 @@ function ensureSettingsPage() {
         </div>
 
         <div class="sl-settings-card">
+
             <div class="sl-settings-row">
                 <div>
                     <h3 data-i18n="websiteNotifications"></h3>
                     <p data-i18n="websiteNotificationsDescription"></p>
                 </div>
+
                 <label class="sl-switch">
                     <input type="checkbox" id="websiteNotificationsToggle" checked>
                     <span class="sl-switch-slider"></span>
@@ -568,6 +712,7 @@ function ensureSettingsPage() {
                     <h3 data-i18n="telegramNotifications"></h3>
                     <p data-i18n="telegramNotificationsDescription"></p>
                 </div>
+
                 <label class="sl-switch">
                     <input type="checkbox" id="telegramNotificationsToggle" checked>
                     <span class="sl-switch-slider"></span>
@@ -581,17 +726,40 @@ function ensureSettingsPage() {
                     <h3 data-i18n="soundNotifications"></h3>
                     <p data-i18n="soundNotificationsDescription"></p>
                 </div>
+
                 <label class="sl-switch">
                     <input type="checkbox" id="soundNotificationsToggle">
                     <span class="sl-switch-slider"></span>
                 </label>
             </div>
 
+            <div class="sl-settings-divider"></div>
+
+            <div class="sl-settings-row">
+                <div>
+                    <h3 data-i18n="pushNotifications"></h3>
+                    <p data-i18n="pushNotificationsDescription"></p>
+                </div>
+
+                <button
+                    type="button"
+                    id="enablePushButton"
+                    class="sl-push-button"
+                    data-i18n="pushEnable"
+                >
+                    Включить
+                </button>
+            </div>
+
+            <div id="pushStatus" class="sl-settings-save-status"></div>
+
             <div id="settingsSaveStatus" class="sl-settings-save-status"></div>
+
         </div>
     `;
 
     const style = document.createElement("style");
+
     style.textContent = `
         .sl-settings-card {
             background: linear-gradient(145deg, #141f30, #101927);
@@ -673,7 +841,39 @@ function ensureSettingsPage() {
         .sl-switch input:checked + .sl-switch-slider::before {
             transform: translateX(21px);
         }
+
+        .sl-push-button {
+            background: #20bfae;
+            color: #071b24;
+            border: none;
+            border-radius: 9px;
+            padding: 11px 17px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: .2s;
+        }
+
+        .sl-push-button:hover {
+            background: #35d4c2;
+        }
+
+        .sl-push-button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        @media (max-width: 500px) {
+            .sl-settings-card {
+                padding: 8px 16px;
+            }
+
+            .sl-settings-row {
+                gap: 12px;
+            }
+        }
     `;
+
     document.head.appendChild(style);
 
     if (footerElement) {
@@ -789,10 +989,19 @@ function applyLanguage(language) {
         chart.update();
     }
 
+    const pushButton = document.getElementById("enablePushButton");
+
+    if (pushButton && !pushButton.disabled) {
+        pushButton.textContent = messagingInitialized
+            ? translate("pushConnected")
+            : translate("pushEnable");
+    }
+
     updateConnectionText();
     updateClimateStatus();
     updateLastUpdate();
     renderNotifications();
+
     setSettingsStatus(settingsLoaded
         ? translate("settingsSaved")
         : translate("settingsLoading"));
@@ -1210,10 +1419,8 @@ function renderNotifications() {
 // =====================================================
 
 function addNotification(type, alerts = []) {
-    // Sound is independent of website notification history.
     playNotificationSound();
 
-    // If website notifications are disabled, do not add new entries.
     if (!notificationSettings.website) return;
 
     const notification = {
