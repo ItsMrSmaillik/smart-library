@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 
 import {
@@ -10,11 +9,6 @@ import {
 
 import Chart from "https://cdn.jsdelivr.net/npm/chart.js/auto/+esm";
 
-import {
-    getMessaging,
-    getToken,
-    onMessage
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
 
 // =====================================================
 // MICROCLIMATE SETTINGS — CHANGE THESE VALUES
@@ -25,6 +19,7 @@ const TEMP_MAX = 30;
 
 const HUMIDITY_MIN = 40;
 const HUMIDITY_MAX = 60;
+
 
 // =====================================================
 // FIREBASE CONFIGURATION
@@ -40,6 +35,7 @@ const firebaseConfig = {
     appId: "1:711061193508:web:cd02f03b11124dca3869b1"
 };
 
+
 // =====================================================
 // INITIALIZATION
 // =====================================================
@@ -50,15 +46,30 @@ const database = getDatabase(app);
 const sensorsRef = ref(database, "sensors");
 const notificationSettingsRef = ref(database, "settings/notifications");
 
-const messaging = getMessaging(app);
-
-const VAPID_PUBLIC_KEY =
-    "BI3sa9hC8zX4xPXb3vqFb97X194wUBBiiCMLOYyX4U0nI_UDE9rWEK_NqQWfVQhKnSZuH8ES-y2Ad1eiGiuXILg";
-
-let messagingInitialized = false;
 
 // =====================================================
-// PUSH NOTIFICATIONS
+// ONESIGNAL INITIALIZATION
+// =====================================================
+
+let oneSignalInstance = null;
+let pushInitialized = false;
+
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+const oneSignalReady = new Promise((resolve, reject) => {
+    window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+            oneSignalInstance = OneSignal;
+            resolve(OneSignal);
+        } catch (error) {
+            reject(error);
+        }
+    });
+});
+
+
+// =====================================================
+// PUSH NOTIFICATIONS — ONESIGNAL
 // =====================================================
 
 async function enablePushNotifications() {
@@ -71,58 +82,31 @@ async function enablePushNotifications() {
             throw new Error("Service Worker не поддерживается браузером.");
         }
 
-        const permission = await Notification.requestPermission();
+        const OneSignal = await oneSignalReady;
 
-        if (permission !== "granted") {
+        await OneSignal.Notifications.requestPermission();
+
+        if (Notification.permission !== "granted") {
             throw new Error("Разрешение на уведомления не предоставлено.");
         }
 
-        const registration = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js"
+        await OneSignal.User.PushSubscription.optIn();
+
+        pushInitialized = true;
+
+        console.log(
+            "OneSignal Push subscription enabled.",
+            OneSignal.User.PushSubscription.id || "(subscription ID pending)"
         );
 
-        await navigator.serviceWorker.ready;
-
-        const token = await getToken(messaging, {
-            vapidKey: VAPID_PUBLIC_KEY,
-            serviceWorkerRegistration: registration
-        });
-
-        if (!token) {
-            throw new Error("Не удалось получить Push-токен.");
-        }
-
-        // Сохраняем FCM-токен в Firebase
-        await set(ref(database, `pushTokens/${token}`), {
-            token: token,
-            createdAt: Date.now()
-            });
-
-        messagingInitialized = true;
-
-        console.log("FCM token successfully received and saved.");
         return true;
 
     } catch (error) {
-        console.error("Push error:", error);
+        console.error("OneSignal Push error:", error);
         throw error;
     }
 }
 
-// Foreground messages: сайт открыт.
-onMessage(messaging, (payload) => {
-    console.log("Foreground Push received:", payload);
-
-    const title = payload.notification?.title || "Smart Library";
-    const body = payload.notification?.body || "Получено новое уведомление";
-
-    if (Notification.permission === "granted") {
-        new Notification(title, {
-            body,
-            icon: "/favicon.ico"
-        });
-    }
-});
 
 // =====================================================
 // HTML ELEMENTS
@@ -139,6 +123,7 @@ const mainElement = document.querySelector(".main");
 const footerElement = document.querySelector(".footer");
 const sidebarMenuItems = document.querySelectorAll(".sidebar .menu-item");
 
+
 // =====================================================
 // CURRENT VALUES
 // =====================================================
@@ -148,6 +133,7 @@ let humidity = null;
 let lastUpdateTime = null;
 let chartSampleTimer = null;
 let lastChartKey = null;
+
 
 // =====================================================
 // LANGUAGES
@@ -353,6 +339,7 @@ const translations = {
     }
 };
 
+
 // =====================================================
 // LANGUAGE SETTINGS
 // =====================================================
@@ -373,6 +360,7 @@ try {
 function translate(key) {
     return translations[currentLanguage]?.[key] || key;
 }
+
 
 // =====================================================
 // CHART
@@ -444,6 +432,7 @@ const chart = chartCanvas ? new Chart(chartCanvas, {
     }
 }) : null;
 
+
 // =====================================================
 // CONNECTION STATUS
 // =====================================================
@@ -455,6 +444,7 @@ function updateConnectionText() {
         connectionElement.textContent = translate(connectionKey);
     }
 }
+
 
 // =====================================================
 // CLIMATE STATUS
@@ -506,6 +496,7 @@ function updateClimateStatus() {
         climateStatusElement.textContent = translate("normalStatus");
     }
 }
+
 
 // =====================================================
 // NOTIFICATION SETTINGS
@@ -621,6 +612,7 @@ async function saveNotificationSetting(key, value) {
     }
 }
 
+
 // =====================================================
 // SETTINGS PAGE
 // =====================================================
@@ -674,6 +666,19 @@ function connectSettingsControls() {
     });
 
     updateSettingsControls();
+
+    oneSignalReady.then(OneSignal => {
+        pushInitialized = Boolean(OneSignal.User.PushSubscription.optedIn);
+
+        const button = document.getElementById("enablePushButton");
+        if (button && !button.disabled) {
+            button.textContent = pushInitialized
+                ? translate("pushConnected")
+                : translate("pushEnable");
+        }
+    }).catch(error => {
+        console.error("OneSignal SDK initialization error:", error);
+    });
 }
 
 function ensureSettingsPage() {
@@ -883,6 +888,7 @@ function ensureSettingsPage() {
     connectSettingsControls();
 }
 
+
 // =====================================================
 // NAVIGATION
 // =====================================================
@@ -950,6 +956,7 @@ if (sidebarMenuItems.length >= 3) {
 
 ensureSettingsPage();
 
+
 // =====================================================
 // LANGUAGE APPLICATION
 // =====================================================
@@ -990,7 +997,7 @@ function applyLanguage(language) {
     const pushButton = document.getElementById("enablePushButton");
 
     if (pushButton && !pushButton.disabled) {
-        pushButton.textContent = messagingInitialized
+        pushButton.textContent = pushInitialized
             ? translate("pushConnected")
             : translate("pushEnable");
     }
@@ -1010,6 +1017,7 @@ if (languageSelect) {
         applyLanguage(event.target.value);
     });
 }
+
 
 // =====================================================
 // NOTIFICATION STORAGE
@@ -1042,6 +1050,7 @@ function saveNotifications() {
         console.warn("Could not save notifications:", error);
     }
 }
+
 
 // =====================================================
 // NOTIFICATION SOUND
@@ -1086,6 +1095,7 @@ function playNotificationSound() {
         console.warn("Notification sound unavailable:", error);
     }
 }
+
 
 // =====================================================
 // NOTIFICATION INTERFACE
@@ -1303,6 +1313,7 @@ notificationWidget.appendChild(notificationButton);
 notificationWidget.appendChild(notificationPanel);
 document.body.appendChild(notificationWidget);
 
+
 // =====================================================
 // NOTIFICATION TEXT
 // =====================================================
@@ -1337,6 +1348,7 @@ function getNotificationText(notification) {
         body: [...messages, ...details].join("\n")
     };
 }
+
 
 // =====================================================
 // RENDER NOTIFICATIONS
@@ -1412,6 +1424,7 @@ function renderNotifications() {
     });
 }
 
+
 // =====================================================
 // ADD NOTIFICATION
 // =====================================================
@@ -1436,6 +1449,7 @@ function addNotification(type, alerts = []) {
     saveNotifications();
     renderNotifications();
 }
+
 
 // =====================================================
 // NOTIFICATION BUTTONS
@@ -1465,6 +1479,7 @@ clearNotificationsButton.addEventListener("click", () => {
     saveNotifications();
     renderNotifications();
 });
+
 
 // =====================================================
 // AUTOMATIC ALERT DETECTION
@@ -1499,6 +1514,7 @@ function checkClimateAlerts() {
     previousAlertState = currentState;
 }
 
+
 // =====================================================
 // LAST UPDATE
 // =====================================================
@@ -1526,6 +1542,7 @@ function updateLastUpdate() {
     lastUpdateElement.textContent =
         `${translate("lastUpdate")}: ${time}`;
 }
+
 
 // =====================================================
 // CHART UPDATE
@@ -1562,6 +1579,7 @@ function addChartPoint() {
 
     chart.update();
 }
+
 
 // =====================================================
 // FIREBASE SENSOR DATA
@@ -1619,6 +1637,7 @@ onValue(
         updateConnectionText();
     }
 );
+
 
 // =====================================================
 // INITIALIZATION
