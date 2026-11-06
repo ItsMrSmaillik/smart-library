@@ -42,21 +42,27 @@ export default async function handler(req, res) {
                 tempLow: "Температура слишком низкая!",
                 tempHigh: "Температура слишком высокая!",
                 humidityLow: "Влажность слишком низкая!",
-                humidityHigh: "Влажность слишком высокая!"
+                humidityHigh: "Влажность слишком высокая!",
+                tempNormal: "Температура вернулась в норму!",
+                humidityNormal: "Влажность вернулась в норму!"
             },
             ro: {
                 title: "⚠️ Smart Library",
                 tempLow: "Temperatura este prea scăzută!",
                 tempHigh: "Temperatura este prea ridicată!",
                 humidityLow: "Umiditatea este prea scăzută!",
-                humidityHigh: "Umiditatea este prea ridicată!"
+                humidityHigh: "Umiditatea este prea ridicată!",
+                tempNormal: "Temperatura a revenit la normal!",
+                humidityNormal: "Umiditatea a revenit la normal!"
             },
             en: {
                 title: "⚠️ Smart Library",
                 tempLow: "Temperature is too low!",
                 tempHigh: "Temperature is too high!",
                 humidityLow: "Humidity is too low!",
-                humidityHigh: "Humidity is too high!"
+                humidityHigh: "Humidity is too high!",
+                tempNormal: "Temperature returned to normal!",
+                humidityNormal: "Humidity returned to normal!"
             }
         };
 
@@ -80,6 +86,14 @@ export default async function handler(req, res) {
 
             case "humidity_high":
                 message = `${t.humidityHigh} ${humidity} %`;
+                break;
+
+            case "temp_normal":
+                message = `${t.tempNormal} ${temperature} °C`;
+                break;
+
+            case "humidity_normal":
+                message = `${t.humidityNormal} ${humidity} %`;
                 break;
 
             default:
